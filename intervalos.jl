@@ -1,5 +1,5 @@
 module intervalos
-export Intervalo, subset, Cestricto, rad, mid, mig, mag, abs, d, pow
+export Intervalo, subset, Cestricto, rad, mid, mig, mag, abs, d, pow, segmentar
 
 
 type Intervalo
@@ -24,6 +24,7 @@ Intervalo(x::Real) = Intervalo(x,x)
 
 Intervalo() = println("Intervalo vacío")
 
+# Aritmética
 
 function +(A::Intervalo,B::Intervalo)
 	set_rounding(BigFloat,RoundDown)
@@ -64,6 +65,8 @@ end
 
 *(x::Real, y::Intervalo) = Intervalo(x)*y
 
+# Booleano
+
 function ==(A::Intervalo,B::Intervalo)
 	if A.inf==B.inf && A.sup==B.sup
        true
@@ -86,6 +89,8 @@ function in(x::Real,A::Intervalo)
        false
     end
 end
+
+# División extendida
 
 function /(A::Intervalo, B::Intervalo)
 	if 0 in B == false
@@ -116,6 +121,10 @@ function /(A::Intervalo, B::Intervalo)
        return Intervalo()
     end
 end
+
+/(A::Intervalo, r::Number) = A/Intervalo(r,r)
+
+#Operaciones de conjuntos  
 
 function ⊆(A::Intervalo, B::Intervalo)
 	if ((B.inf<= A.inf) && (A.sup<=B.sup))
@@ -156,7 +165,29 @@ rad(A::Intervalo) = 0.5*(A.sup - A.inf)
 
 mid(A::Intervalo) = 0.5*(A.sup + A.inf)
 
+# Segmentación de intervalos
 
+function segmentar(A::Intervalo,n::Int)
+	Iseg=Intervalo[]
+    b = (A.sup-A.inf)/(n)
+    for i in 1:n-1
+	set_rounding(BigFloat,RoundDown)
+	A1=A.inf + b*(i-1)
+	set_rounding(BigFloat,RoundUp)
+	A2=A.inf+b*i
+	set_rounding(BigFloat,RoundNearest)
+       push!(Iseg,Intervalo(A1,A2))
+    end
+	set_rounding(BigFloat,RoundDown)
+	A1=A.inf+b*(n-1)
+	set_rounding(BigFloat,RoundUp)
+	A2=A.sup
+	set_rounding(BigFloat,RoundNearest)
+    push!(Iseg,Intervalo(A1,A2))
+    return Iseg
+end
+
+# Propiedades del intervalo 
 
 function mig(A::Intervalo)
 	if (0 in A)
@@ -177,6 +208,8 @@ end
 function d(A::Intervalo,B::Intervalo)
 	return max(abs(A.inf-B.inf),abs(A.sup-B.sup))
 end
+
+#Potencia
 
 function ^(A::Intervalo, n::Int)
 	if (n>0 && (mod(n,2)==1))
@@ -209,9 +242,127 @@ end
 
 pow(A::Intervalo,n::Int) = ^(A::Intervalo,n::Int)
 
+# Exponencial 
+import Base.exp
+
+function exp(A::Intervalo)
+set_rounding(BigFloat, RoundDown)
+A1=exp(A.inf)
+set_rounding(BigFloat, RoundUp)
+A2= exp(A.sup)
+Intervalo(A1,A2)
+end
+
+# Logaritmo
+import Base.log
+
+function log(A::Intervalo)
+	if 0<= A.inf
+		return Intervalo(log(A.inf),log(A.sup))
+	else
+	return error("Log no está definido para intervalos negativos")
+	end
+end
+
+#Raiz cuadrada
+import Base.sqrt
+
+function sqrt(A::Intervalo)
+  set_rounding(BigFloat, RoundDown)
+  A1=sqrt(A.inf)
+  set_rounding(BigFloat,RoundUp)
+  A2=sqrt(A.sup)
+  set_rounding(BigFloat,RoundNearest)
+	if 0 <= A.inf
+		return Intervalo(A1,A2)
+	else
+		return error("sqrt está definida para intervalos negativos")
+	end
+end
+
+function ^(A::Intervalo, r::Float64)
+	if A.inf<= 0
+		return error("potencia no definida para intervalos negativos")
+	else
+		exp(r*log(A))
+	end
+end
 
 
-end 
+#seno
+function Smas(A::Intervalo)
+	k1=int(floor((A.inf-π/2)/(2π)))
+    k2=int(ceil((A.sup-π/2)/(2π)))
+    S1=Float64[]
+    for i in k1:k2
+	    push!(S1,2π*i+π/2)
+    end
+    return S1
+end
+
+function Smenos(A::Intervalo)
+	k1=int(floor((A.inf+π/2)/(2π)))
+    k2=int(ceil((A.sup+π/2)/(2π)))
+    S1=Float64[]
+    for i in k1:k2
+         push!(S1,2π*i-π/2)
+    end
+    return S1
+end
+
+function ∩(A::Intervalo, b::Array{Float64,1})
+	k=0
+    for i in 1:length(b)
+	    if (b[i] in A)
+		    k+=1
+        end
+    end
+    return k
+end
+
+import Base.sin
+
+function sin(A::Intervalo)
+    if ((A ∩ Smenos(A)>0) && (A ∩ Smas(A) >0))
+        return Intervalo(-1,1)
+    end
+    
+    if ((A ∩ Smenos(A) >0) && (A ∩ Smas(A) ==0))
+        set_rounding(BigFloat, RoundUp)
+        A2=max(sin(A.inf),sin(A.sup))
+        set_rounding(BigFloat, RoundNearest)
+        return Intervalo(-1,A2)
+    end
+    
+    if ((A ∩ Smenos(A) == 0) && (A ∩ Smas(A)>0))
+        set_rounding(BigFloat, RoundDown)
+        A1=min(sin(A.inf),sin(A.sup))
+        set_rounding(BigFloat, RoundNearest)
+        return Intervalo(A1,1)
+    end 
+    
+    if ((A ∩ Smenos(A) == 0) && (A ∩ Smas(A)==0))
+        set_rounding(BigFloat, RoundDown)
+        A1=min(sin(A.inf),sin(A.sup))
+        set_rounding(BigFloat, RoundUp)
+        A2=max(sin(A.inf),sin(A.sup))
+        set_rounding(BigFloat, RoundNearest)
+        return Intervalo(A1,A2)
+    end
+end
+
+#coseno
+
+import Base.cos
+cos(A::Intervalo)=sin(A+π/2)
+
+#tangente
+
+import Base.tan
+tan(A::Intervalo)=sin(A)/(cos(A))
+
+
+end #modulo
 
 
 
