@@ -22,7 +22,7 @@ end
 Intervalo(x::Real) = Intervalo(x,x)
 
 
-Intervalo() = println("Intervalo vacío")
+Intervalo() = false
 
 # Aritmética
 
@@ -64,6 +64,15 @@ end
 *(x::Intervalo, y::Real) = x*Intervalo(y)
 
 *(x::Real, y::Intervalo) = Intervalo(x)*y
+
+# FUNCION ZERO PARA MULTIPLICAR MATRICES
+import Base.zero
+function zero(I::Intervalo)
+	return Intervalo(0) 
+end
+
+zero(::Type{Intervalo}) = Intervalo(0)
+zero(::Type{Any}) = Intervalo(0)
 
 # Booleano
 
@@ -123,6 +132,7 @@ function /(A::Intervalo, B::Intervalo)
 end
 
 /(A::Intervalo, r::Number) = A/Intervalo(r,r)
+/(r::Number, A::Intervalo) = Intervalo(r,r)/A
 
 #Operaciones de conjuntos  
 
